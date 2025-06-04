@@ -1,0 +1,240 @@
+'''
+ADMIN FEATURES:
+1.ADD STUDENT
+2.DELETE STUDENT
+3.UPDATE STUDENT
+4.TIME TABLE
+5.MARKS
+6.ATTENDANCE
+
+'''
+
+
+
+
+from db import connect
+import getpass
+import hashlib
+
+def login():
+    username = input("Enter username: ")
+    password = getpass.getpass("Enter password: ")
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    con = connect()
+    cursor = con.cursor()
+    query = "SELECT * FROM admins WHERE username = %s AND password = %s"
+    values = (username, hashed_password)
+    cursor.execute(query, values)
+    admin = cursor.fetchone()
+    if admin:
+        print("Login successful!")
+        admin_menu()
+    else:
+        print("Invalid username or password. Please try again.")
+        login()
+
+def admin_menu():
+    con = connect()
+    cursor = con.cursor()
+    print("""\nAdmin menu:
+    1.Add student
+    2.Update student
+    3.Reset student password
+    4.Update marks
+    5.Add marks
+    6.View student marks
+    7.View All students
+    8.Update Timetable
+    9.Add attendance
+    10.Update attendance
+    11.Logout""")
+    ch = int(input("Enter your choice: "))
+    if ch == 1:
+        add_student()
+    elif ch == 2:
+        update_student()
+    elif ch == 3:
+        reset_student_password()
+    elif ch == 4:
+        update_marks()
+    elif ch == 5:
+        add_marks()
+    elif ch == 6:
+        view_student_marks()
+    elif ch == 7:
+        view_all_students()
+    elif ch == 8:
+        update_timetable()
+    elif ch == 9:
+        add_attendance()
+    elif ch == 10:
+        update_attendance()
+    elif ch == 11:
+        logout()
+        login()
+    else:
+        print("Invalid choice. Please try again.")
+        admin_menu()
+
+def add_student():
+    con = connect()
+    cursor = con.cursor()
+    roll_no = input("Enter Roll No: ")
+    name = input("Enter Name: ")
+    class_name = input("Enter class: ")
+    section = input("Enter section: ")
+    password = "password@123"
+    email = input("Enter Email: ")
+    query = "INSERT INTO students(roll_no, name, class, section, password, email) values(%s, %s, %s, %s, %s, %s)"
+    values = (roll_no, name, class_name, section, password, email)
+    cursor.execute(query, values)
+    con.commit()
+    print("Student added successfully.")
+    admin_menu()
+
+def update_student():
+    con = connect()
+    cursor = con.cursor()
+    roll_no = input("Enter Roll No of student to update: ")
+    name = input("Enter new Name: ")
+    class_name = input("Enter new class: ")
+    section = input("Enter new section: ")
+    email = input("Enter new Email: ")
+    query = "UPDATE students SET name=%s, class=%s, section=%s, email=%s where roll_no=%s"
+    values = (name, class_name, section, email, roll_no)
+    cursor.execute(query, values)
+    con.commit()
+    print("Student details updated successfully.")
+    admin_menu()
+
+def reset_student_password():
+    pass
+
+def update_marks():
+    con = connect()
+    cursor = con.cursor()
+    roll_no = input("Enter Roll No of student to update marks: ")
+    subject = input("Enter subject: ")
+    marks = input("Enter Marks: ")
+    query = "UPDATE marks SET marks=%s WHERE roll_no=%s AND subject=%s"
+    values = (marks, roll_no, subject)
+    cursor.execute(query, values)
+    con.commit()
+    print("Marks updated successfully.")
+    admin_menu()
+
+def add_marks():
+    con = connect()
+    cursor = con.cursor()
+    roll_no = input("Enter Roll No of student to add marks: ")
+    subject = input("Enter subject: ")
+    marks = input("Enter Marks: ")
+    query = "insert into marks(roll_no, subject, marks) values(%s, %s, %s)"
+    values = (roll_no, subject, marks)
+    cursor.execute(query, values)
+    con.commit()
+    print("Marks added successfully.")
+    admin_menu()
+
+def view_student_marks():
+    con = connect()
+    cursor = con.cursor()
+    roll_no = input("Enter Roll No of student to view student marks: ")
+    query = "SELECT * from marks WHERE roll_no = %s"
+    cursor.execute(query, (roll_no,))
+    results = cursor.fetchall()
+    for row in results:
+        print(row)
+    admin_menu()
+
+def view_all_students():
+    con = connect()
+    cursor = con.cursor()
+    query = "SELECT * FROM students"
+    cursor.execute(query)
+    results = cursor.fetchall()
+    for row in results:
+        print(row)
+    admin_menu()
+
+def update_timetable():
+    pass
+
+def add_attendance():
+    con = connect()
+    cursor = con.cursor()
+    roll_no = int(input("Enter roll number: "))
+    date = input("Enter date (YYYY-MM-DD): ")
+    status = input("Enter attendance status (Present/Absent): ")
+    query = "INSERT INTO attendance (roll_no, date, status) VALUES (%s, %s, %s)"
+    values = (roll_no, date, status)
+    try:
+        cursor.execute(query, values)
+        con.commit()
+        print("Attendance added successfully.")
+    except Exception as e:
+        con.rollback()
+        print("Error adding attendance:", str(e))
+    finally:
+        con.close()
+    admin_menu()
+
+def update_attendance():
+    con = connect()
+    cursor = con.cursor()
+    roll_no = int(input("Enter roll number: "))
+    date = input("Enter date (YYYY-MM-DD): ")
+    status = input("Enter new attendance status (Present/Absent): ").capitalize()
+    while status not in ['Present', 'Absent']:
+        status = input("Invalid status. Enter attendance status (Present/Absent): ").capitalize()
+    query = "SELECT * FROM attendance WHERE roll_no = %s AND date = %s"
+    cursor.execute(query, (roll_no, date))
+    attendance_record = cursor.fetchone()
+
+    if attendance_record is None:
+        print("No attendance record found for the given roll number and date. Would you like to add attendance? (yes/no)")
+        choice = input().lower()
+        if choice == "yes":
+            add_attendance()
+        else:
+            print("Attendance not updated.")
+            admin_menu()
+
+    query = "UPDATE attendance SET status = %s WHERE roll_no = %s AND date = %s"
+    values = (status, roll_no, date)
+
+    try:
+        cursor.execute(query, values)
+        con.commit()
+        print("Attendance updated successfully.")
+    except Exception as e:
+        con.rollback()
+        print("Error updating attendance:", str(e))
+    finally:
+        con.close()
+    admin_menu()
+
+def logout():
+    print("Logging out...")
+
+if name == "main":
+    # Create admin account if not exists
+    con = connect()
+    cursor = con.cursor()
+    query = "CREATE TABLE IF NOT EXISTS admins (username VARCHAR(255), password VARCHAR(255))"
+    cursor.execute(query)
+    con.commit()
+
+    # Insert default admin credentials
+    query = "SELECT * FROM admins"
+    cursor.execute(query)
+    admin = cursor.fetchone()
+    if not admin:
+        username = "admin"
+        password = hashlib.sha256("password".encode()).hexdigest()
+        query = "INSERT INTO admins (username, password) VALUES (%s, %s)"
+        values = (username, password)
+        cursor.execute(query, values)
+        con.commit()
+
+    login()
